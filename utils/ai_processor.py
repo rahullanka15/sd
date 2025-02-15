@@ -252,6 +252,18 @@ The above is just the REFERENCE for syntax generate the mermaid.js code correctl
                         # Clean up the diagram field if it exists
                         if 'diagram' in data:
                             data['diagram'] = data['diagram'].strip()
+                                                        # Add Mermaid config if not present
+                            if not data['diagram'].startswith('%%{init:'):
+                                data['diagram'] = '''%%{init: {
+                                    'theme':'default',
+                                    'flowchart': {
+                                        'htmlLabels': true,
+                                        'curve': 'basis',
+                                        'useMaxWidth': true,
+                                        'useMaxHeight': true,
+                                        'scrollY': true
+                                    }
+                                }}%%\n''' + data['diagram']
                             if not data['diagram'].startswith('graph TD'):
                                 data['diagram'] = 'graph TD\n' + data['diagram']
                         return data
