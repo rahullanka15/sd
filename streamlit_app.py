@@ -3,7 +3,7 @@ import streamlit as st
 from utils.ai_processor import AIProcessor
 from utils.diagram_generator import DiagramGenerator
 import streamlit.components.v1 as components
-import json
+import re
 
 def setup_page():
     st.set_page_config(
@@ -146,36 +146,218 @@ def main():
             st.error(f"Analysis failed: {str(e)}")
 
 # streamlit_app.py (consolidated render_mermaid function)
+# def render_mermaid(mermaid_code):
+#     html = f"""
+#     <!DOCTYPE html>
+#     <html>
+#     <head>
+#         <script src="https://cdn.jsdelivr.net/npm/roughjs@4.5.2/bundled/rough.min.js"></script>
+#         <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+#         <style>
+#             .mermaid {{
+#                 padding: 20px;
+#                 background: white;
+#                 border-radius: 10px;
+#                 margin: 10px 0;
+#                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+#             }}
+#             .mermaid svg {{
+#                 max-width: 100% !important;
+#                 height: auto !important;
+#             }}
+#         </style>
+#     </head>
+#     <body>
+#         <div class="mermaid">
+#             {mermaid_code}
+#         </div>
+#         <script>
+#             mermaid.initialize({{
+#                 startOnLoad: true,
+#                 securityLevel: 'loose',
+#                                 theme: 'default',
+#                 flowchart: {{
+#                     curve: 'monotoneX',
+#                     padding: 20
+#                 }},
+#                 maxTextSize: 90000
+#             }});
+#         </script>
+#     </body>
+#     </html>
+#     """
+#     return components.html(html, height=800)
+
+
+# 2
+# def render_mermaid(mermaid_code):
+#     """
+#     Renders a Mermaid diagram with improved initialization and error handling
+#     """
+#     # Add configuration for hand-drawn style
+#     # config_header = '''
+#     # config:
+#     #     look: handDrawn
+#     #     theme: neutral
+#     #     flowchart:
+#     #         htmlLabels: true
+#     #         curve: basis
+#     #         defaultRenderer: elk
+#     # \n'''
+    
+#     # Add config header to mermaid code if not present
+#     # if not mermaid_code.startswith('---'):
+#     #     mermaid_code = config_header + mermaid_code
+    
+#     # Clean and prepare mermaid code
+#     mermaid_code = mermaid_code.replace('\n', '\\n').replace('"', '\\"')
+    
+#     html = f"""
+#     <!DOCTYPE html>
+#     <html>
+#     <head>
+#         <script type="module">
+#             import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+            
+#             const config = {{
+#                 startOnLoad: false,
+#                 theme: 'neutral',
+#                 look: 'handDrawn',
+#                 flowchart: {{
+#                     htmlLabels: true,
+#                     curve: 'basis',
+#                     defaultRenderer: 'elk'
+#                 }}
+#             }};
+            
+#             mermaid.initialize(config);
+            
+#             window.addEventListener('load', async function() {{
+#                 try {{
+#                     console.log("Attempting to render diagram...");
+#                     const container = document.querySelector("#mermaid-diagram");
+#                     const {{ svg }} = await mermaid.render('graphDiv', `{mermaid_code}`);
+#                     container.innerHTML = svg;
+#                     console.log("Diagram rendered successfully");
+#                 }} catch (error) {{
+#                     console.error("Mermaid rendering error:", error);
+#                     document.querySelector("#mermaid-diagram").innerHTML = 
+#                         `<pre style="color: red;">Error rendering diagram: ${{error.message}}</pre>`;
+#                 }}
+#             }});
+#         </script>
+#         <style>
+#             #mermaid-diagram {{
+#                 background: white;
+#                 padding: 20px;
+#                 border-radius: 10px;
+#                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+#                 margin: 10px 0;
+#                 overflow: auto;
+#             }}
+#             #mermaid-diagram svg {{
+#                 max-width: 100%;
+#                 height: auto;
+#             }}
+#         </style>
+#     </head>
+#     <body>
+#         <div id="mermaid-diagram">Loading diagram...</div>
+#     </body>
+#     </html>
+#     """
+    
+#     # # Add debug message
+#     # st.write("Attempting to render diagram...")
+    
+#     try:
+#         components.html(html, height=800, scrolling=True)
+#     except Exception as e:
+#         st.error(f"Error in HTML component: {str(e)}")
+#         st.code(mermaid_code, language="mermaid")
+
 def render_mermaid(mermaid_code):
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <script src="https://cdn.jsdelivr.net/npm/roughjs@4.5.2/bundled/rough.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
-        <style>
-            .mermaid {{
-                padding: 20px;
-                background: white;
-                border-radius: 10px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="mermaid">
-            {mermaid_code}
-        </div>
-        <script>
-            mermaid.initialize({{
-                startOnLoad: true,
-                securityLevel: 'loose'
-            }});
-        </script>
-    </body>
-    </html>
     """
-    return components.html(html, height=800)
+    Renders a Mermaid diagram with proper formatting and line breaks
+    """
+    try:
+        # First format the diagram code
+        lines = mermaid_code.split('%%')
+        formatted_lines = []
+        
+        for line in lines:
+            if line.strip():
+                # Handle the graph TD line specially
+                if 'graph TD' in line:
+                    formatted_lines.append('graph TD')
+                    continue
+                
+                # Add %% for comments except for the first line
+                if formatted_lines:
+                    line = f'%%{line}'
+                
+                # Split connections into separate lines
+                connections = re.split(r'([A-Za-z0-9_-]+\s*-->.*?(?=\s*[A-Za-z0-9_-]+\s*-->|$))', line)
+                for conn in connections:
+                    if '-->' in conn:
+                        formatted_lines.append(conn.strip())
+                    elif conn.strip():
+                        formatted_lines.append(conn.strip())
+        
+        formatted_code = '\n'.join(formatted_lines)
+        
+        # Show the formatted code for debugging
+        st.code(formatted_code, language="mermaid")
+        
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <script src="https://cdn.jsdelivr.net/npm/mermaid@9.3.0/dist/mermaid.min.js"></script>
+            <style>
+                .mermaid {{
+                    background: white;
+                    padding: 20px;
+                    border-radius: 10px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    margin: 10px 0;
+                    overflow: auto;
+                }}
+                .mermaid svg {{
+                    max-width: 100%;
+                    height: auto;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="mermaid">
+                {formatted_code}
+            </div>
+            <script>
+                mermaid.initialize({{
+                    startOnLoad: true,
+                    securityLevel: 'loose',
+                    theme: 'neutral',
+                    flowchart: {{
+                        htmlLabels: true,
+                        curve: 'basis',
+                        useMaxWidth: true,
+                        padding: 20,
+                        rankSpacing: 50,
+                        nodeSpacing: 50,
+                        diagramPadding: 20
+                    }}
+                }});
+            </script>
+        </body>
+        </html>
+        """
+        
+        return components.html(html, height=800, scrolling=True)
+        
+    except Exception as e:
+        st.error(f"Error rendering diagram: {str(e)}")
+        st.code(mermaid_code, language="mermaid")
 
 if __name__ == "__main__":
     main()
